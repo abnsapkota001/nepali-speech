@@ -1,7 +1,22 @@
-# nepali-speech
+# Nepali Speech — Local Nepali Text-to-Speech (TTS) Toolkit
 
-Prepare mixed Nepali text for speech. Numbers, Latin words, and punctuation can
-otherwise be misread or dropped by a Nepali TTS model.
+**Nepali Speech** is an open-source Python toolkit for Nepali text-to-speech (TTS), speech preprocessing, and local speech synthesis.
+
+It prepares real-world Nepali and mixed Nepali-English text for speech by handling numbers, dates, currency, English words, acronyms, punctuation, pronunciation overrides, and optional Romanized Nepali transliteration. It also includes local Nepali speech generation using a VITS model.
+
+Useful for Nepali TTS, Nepali AI voice applications, accessibility, news/audio generation, voice assistants, and other Nepali-language AI projects.
+
+## Key features
+
+- Nepali text-to-speech preprocessing
+- Local Nepali VITS speech synthesis
+- Mixed Nepali-English text normalization
+- Nepali number, date, and currency normalization
+- English-to-Nepali pronunciation handling
+- Acronym pronunciation
+- Optional Romanized Nepali → Devanagari transliteration
+- Custom pronunciation overrides
+- Fully local inference after model setup
 
 ## 30-second demo
 
