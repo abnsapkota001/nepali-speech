@@ -12,9 +12,9 @@ otherwise be misread or dropped by a Nepali TTS model.
 - An ordered list of text changes. Postpositions stay separate for TTS, and `।`
   becomes `.` without manually inserted audio silence.
 
-Before: `Tokyo मा Oct 12 मा $40 हुनेछ।`
+Before: `Kathmandu मा Nov 5 मा हुने music festival को ticket $30 हुनेछ।`
 
-After: `टोक्यो मा अक्टोबर बाह्र तारिख मा चालीस अमेरिकी डलर हुनेछ.`
+After: `काठमाडौं मा नोभेम्बर पाँच तारिख मा हुने म्युजिक फेस्टिभल को टिकट तीस अमेरिकी डलर हुनेछ.`
 
 ## Install
 
