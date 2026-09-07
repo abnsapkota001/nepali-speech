@@ -13,9 +13,16 @@ def main():
     speak = commands.add_parser("speak")
     speak.add_argument("text")
     speak.add_argument("-o", "--output", required=True)
+    commands.add_parser("setup-pronunciation", help="Download English pronunciation data")
+    for command in (normal, speak):
+        command.add_argument("--romanized", choices=("enabled", "disabled"), default="disabled")
     args = parser.parse_args()
     try:
-        result = prepare_text(args.text)
+        if args.command == "setup-pronunciation":
+            from .pronunciation import pronunciation_resources
+            pronunciation_resources(download=True)
+            return
+        result = prepare_text(args.text, romanized=args.romanized)
         if args.command == "normalize":
             print(result.text)
             if args.changes:

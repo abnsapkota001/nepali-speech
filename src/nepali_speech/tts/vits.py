@@ -13,14 +13,18 @@ import soundfile as sf
 import torch
 from huggingface_hub import hf_hub_download
 
+VITS_REVISION = "2e561ba58618d021b5b8323d3765880f7e0ecfdb"
+# TODO: vendor/minimize the upstream code executed at runtime.
+
+
 def _load_vits(device, cache_root):
     repo = "Dragneel/nepali-vits-tts"
-    cache = cache_root / "vits"
+    cache = cache_root / "vits" / VITS_REVISION
     cache.mkdir(parents=True, exist_ok=True)
     for name in ("models.py", "commons.py", "modules.py", "attentions.py", "transforms.py"):
         path = cache / name
         if not path.exists():
-            urlretrieve("https://raw.githubusercontent.com/jaywalnut310/vits/main/" + name, path)
+            urlretrieve(f"https://raw.githubusercontent.com/jaywalnut310/vits/{VITS_REVISION}/" + name, path)
     # Upstream imports a compiled alignment extension used only during training.
     # Inference uses commons.generate_path and needs no compiler.
     alignment = types.ModuleType("monotonic_align")

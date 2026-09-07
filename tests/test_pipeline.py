@@ -25,29 +25,29 @@ def offline_english(monkeypatch):
 def test_corpus(name):
     # Generic rendering uses recorded phoneme fixtures; no model downloads.
     try:
-        result = prepare_text(CORPUS[name])
+        result = prepare_text(CORPUS[name], romanized="enabled" if name == "romanized_nepali" else "disabled")
     except TransliterationUnavailable as exc:
-        if name == "T6":
+        if name == "romanized_nepali":
             pytest.skip(str(exc))
         raise
     assert not any(c.isascii() and c.isalpha() for c in result.text)
     assert "।" not in result.text
     assert result.changes
-    if name == "T1":
+    if name == "pure_nepali":
         assert result.text == CORPUS[name].replace("।", ".")
-    if name == "T2":
+    if name == "numbers_currency":
         assert "एक सय पच्चीस" in result.text
         assert "बीस अमेरिकी डलर" in result.text
-    if name in {"T3", "T7"}:
+    if name in {"mixed_date_location", "mixed_stress"}:
         assert "टोक्यो मा अक्टोबर बाह्र तारिख मा" in result.text
-    if name in {"T4", "T7"}:
+    if name in {"mixed_english", "mixed_stress"}:
         assert "ट्राभल" in result.text
         assert "ट्रेभल" not in result.text
-    if name == "T5":
+    if name == "acronyms":
         assert "बी बी सी" in result.text and "डब्ल्यू एच ओ" in result.text
-    if name == "T6":
+    if name == "romanized_nepali":
         assert sum(c["kind"] == "romanized_nepali" for c in result.changes) == 6
-    if name == "T7":
+    if name == "mixed_stress":
         assert "चालीस अमेरिकी डलर" in result.text
 
 
@@ -95,7 +95,7 @@ def test_missing_indicxlit_is_explicit(monkeypatch):
         raise TransliterationUnavailable("unavailable")
     monkeypatch.setattr(pipeline, "transliterate_word", unavailable)
     with pytest.raises(TransliterationUnavailable):
-        prepare_text(CORPUS["T6"])
+        prepare_text(CORPUS["romanized_nepali"], romanized="enabled")
 
 
 def test_empty_and_type():
@@ -158,3 +158,34 @@ def test_no_builtin_word_overrides(monkeypatch):
     monkeypatch.setattr(pipeline, "english_pronunciation", pronounce)
     assert prepare_text("Texas Dallas Diaspora United Airlines USCIS").text == "शब्द शब्द शब्द शब्द शब्द यू एस सी आई एस"
     assert calls == ["Texas", "Dallas", "Diaspora", "United", "Airlines"]
+
+
+@pytest.mark.parametrize("overrides", [None, {}])
+def test_empty_overrides(overrides):
+    assert prepare_text("25।", overrides=overrides).text == "पच्चीस."
+
+
+def test_default_does_not_route_english_to_indicxlit(monkeypatch):
+    def unavailable(word):
+        pytest.fail("Default normalization must not load IndicXlit")
+    monkeypatch.setattr(pipeline, "transliterate_word", unavailable)
+    monkeypatch.setattr(pipeline, "english_pronunciation", lambda word: "शब्द")
+    assert prepare_text("aaja ma travel hotel").text == "शब्द शब्द शब्द शब्द"
+
+
+def test_explicit_romanized_mode(monkeypatch):
+    monkeypatch.setattr(pipeline, "transliterate_word", lambda word: "आज")
+    assert prepare_text("aaja", romanized="enabled").text == "आज"
+    with pytest.raises(ValueError):
+        prepare_text("आज", romanized="unknown")
+
+
+def test_pronunciation_resources_never_download_implicitly(monkeypatch):
+    import nltk
+    from nepali_speech.pronunciation import pronunciation_resources
+    def missing(location):
+        raise LookupError(location)
+    monkeypatch.setattr(nltk.data, "find", missing)
+    monkeypatch.setattr(nltk, "download", lambda *a, **kw: pytest.fail("Unexpected download"))
+    with pytest.raises(RuntimeError, match="setup-pronunciation"):
+        pronunciation_resources()

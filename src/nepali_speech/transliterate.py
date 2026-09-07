@@ -27,12 +27,3 @@ def transliterate_word(word):
     if not candidates or not re.search(r"[\u0900-\u097f]", candidates[0]):
         raise TransliterationUnavailable(f"IndicXlit returned no Nepali candidate for {word!r}")
     return candidates[0]
-
-
-# Routing hints, not pronunciation substitutions. IndicXlit generates the output.
-_HINTS = set("aaja aja ma ko ka ki lai le ra chha cha ho nepali namaste hunechha thulo sano samudayako karyakram bholi mero timro hami tapai ramro garnu huncha chhan".split())
-
-
-def likely_romanized(word, context):
-    words = re.findall(r"[A-Za-z]+", context.lower())
-    return word.lower() in _HINTS or (sum(w in _HINTS for w in words) >= 2 and word.islower())

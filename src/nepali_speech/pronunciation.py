@@ -22,20 +22,28 @@ def acronym(word):
     return " ".join(LETTERS[c] for c in word)
 
 
-@lru_cache(maxsize=1)
-def _g2p():
-    # Keep NLTK resources inside the caller's chosen project cache.
+def pronunciation_resources(*, download=False):
+    """Check NLTK data, downloading only when explicitly requested."""
     cache = Path(os.environ.get("NEPALI_SPEECH_CACHE", "outputs/.cache")) / "nltk"
     os.environ.setdefault("NLTK_DATA", str(cache.resolve()))
     import nltk
-    nltk.data.path.insert(0, str(cache.resolve()))
-    cache.mkdir(parents=True, exist_ok=True)
+    if str(cache.resolve()) not in nltk.data.path:
+        nltk.data.path.insert(0, str(cache.resolve()))
+    # g2p_en checks both archives during import, even though we do not tag POS.
     for resource, location in (("cmudict", "corpora/cmudict.zip"), ("averaged_perceptron_tagger", "taggers/averaged_perceptron_tagger.zip")):
         try:
             nltk.data.find(location)
         except LookupError:
+            if not download:
+                raise RuntimeError("Pronunciation data missing. Run: nepali-speech setup-pronunciation") from None
+            cache.mkdir(parents=True, exist_ok=True)
             if not nltk.download(resource, download_dir=str(cache), quiet=True):
                 raise RuntimeError(f"Unable to download NLTK resource {resource}")
+
+
+@lru_cache(maxsize=1)
+def _g2p():
+    pronunciation_resources()
     from g2p_en import G2p
     return G2p()
 
