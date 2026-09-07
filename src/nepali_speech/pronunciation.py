@@ -4,10 +4,6 @@ import os
 from pathlib import Path
 import re
 
-BUILTIN_OVERRIDES = {
-    "Texas": "टेक्सस", "Dallas": "डालस", "Diaspora": "डायस्पोरा",
-    "United Airlines": "युनाइटेड एयरलाइन्स", "USCIS": "यू एस सी आई एस",
-}
 LETTERS = dict(zip("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "ए|बी|सी|डी|ई|एफ|जी|एच|आई|जे|के|एल|एम|एन|ओ|पी|क्यू|आर|एस|टी|यू|भी|डब्ल्यू|एक्स|वाई|जेड".split("|")))
 CONSONANTS = dict(zip(
     "B CH D DH F G HH JH K L M N NG P R S SH T TH V W Y Z ZH".split(),

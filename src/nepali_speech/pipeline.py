@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import re
 from .normalize import normalize_values
 from .punctuation import normalize_punctuation
-from .pronunciation import BUILTIN_OVERRIDES, acronym, english_pronunciation
+from .pronunciation import acronym, english_pronunciation
 from .transliterate import likely_romanized, transliterate_word
 
 
@@ -30,13 +30,14 @@ def prepare_text(text: str, overrides: dict[str, str] | None = None) -> Prepared
             return after
         return pattern.sub(apply, value)
 
-    names = {k.casefold(): v for k, v in BUILTIN_OVERRIDES.items()}
+    names = {}
     for key, value in (overrides or {}).items():
-        if not key or not isinstance(value, str) or not value.strip() or re.search("[A-Za-z]", value):
+        if not isinstance(key, str) or not key.strip() or not isinstance(value, str) or not value.strip() or re.search("[A-Za-z]", value):
             raise ValueError("Overrides need nonempty keys and Nepali-script pronunciation values")
         names[key.casefold()] = value
-    pattern = re.compile(r"(?<!\w)(?:" + "|".join(re.escape(k) for k in sorted(names, key=len, reverse=True)) + r")(?!\w)", re.I)
-    text = replace(pattern, lambda m: names[m[0].casefold()], text, "override")
+    if names:
+        pattern = re.compile(r"(?<!\w)(?:" + "|".join(re.escape(k) for k in sorted(names, key=len, reverse=True)) + r")(?!\w)", re.I)
+        text = replace(pattern, lambda m: names[m[0].casefold()], text, "override")
     text = normalize_values(text, replace)
     context = text
     def latin(match):

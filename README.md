@@ -1,51 +1,33 @@
 # nepali-speech
 
-Prepare mixed Nepali text for local VITS speech. Raw digits, Latin words, and
-Devanagari danda punctuation can otherwise be misread or dropped by the model.
-
-**V1:** T1–T5 and T7 are verified with local Windows CPU VITS.
-Romanized Nepali uses the optional IndicXlit adapter. Core installation works
-without it; T6 runs when available and skips with a reason otherwise. The
-adapter interface is tested, but live IndicXlit output is unverified here.
+Prepare mixed Nepali text for speech. Numbers, Latin words, and punctuation can
+otherwise be misread or dropped by a Nepali TTS model.
 
 ## Features
 
-- Nepali number words, whole-dollar USD amounts, and English month/day dates.
-- Caller pronunciation overrides, acronyms, and approximate English phonetics.
-- Optional IndicXlit support for Romanized Nepali.
-- Sentence punctuation and an ordered audit list of transformations.
-- Local CPU VITS synthesis with no manually inserted silence.
+- Spoken Nepali integers, whole-dollar USD amounts, and English month/day dates.
+- Generic English pronunciation with g2p_en and letter-by-letter acronyms.
+- Caller-provided word and phrase overrides; no built-in word dictionary.
+- Optional Romanized Nepali transliteration and local VITS speech.
+- An ordered list of text changes. Postpositions stay separate for TTS, and `।`
+  becomes `.` without manually inserted audio silence.
 
 Before: `Tokyo मा Oct 12 मा $40 हुनेछ।`
 
 After: `टोक्यो मा अक्टोबर बाह्र तारिख मा चालीस अमेरिकी डलर हुनेछ.`
 
-## Installation
+## Install
 
-From this directory, in PowerShell:
+Requires Python 3.10+. Clone this repository, then install from its directory:
 
-```powershell
+```sh
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e '.[tts,dev]'
+# Activate .venv using your shell.
+python -m pip install -e .
 ```
 
-Text-only installation: `python -m pip install -e .`.
-The existing local environment is `.venv`; if venv's pip bootstrap fails,
-`python -m pip --python .venv\Scripts\python.exe install -e '.[tts,dev]'`
-uses the host's pip to install into it.
-
-Optional Romanized Nepali support: `python -m pip install -e ".[indicxlit]"`.
-Its legacy fairseq stack failed to build in this Windows/Python 3.13 environment.
-T6 skips with that backend unavailable; all core features work without it.
-`nepali_speech.transliterate.transliterate_word` remains available as the lazy
-transliteration interface and raises `TransliterationUnavailable` if needed.
-
-The first English conversion downloads NLTK resources. First synthesis downloads
-VITS source and weights if absent. Later cached inference is local.
-All runtime caches default to `outputs/.cache` relative to the current directory;
-set `NEPALI_SPEECH_CACHE` to choose another location. No VITS model is loaded by
-`prepare_text`.
+For development: `python -m pip install -e ".[dev]"`, then `python -m pytest`.
+Tests use phoneme fixtures and need no TTS models or pronunciation downloads.
 
 ## API
 
@@ -56,75 +38,61 @@ result = prepare_text("Tokyo मा Oct 12 मा ticket $40 हुनेछ.")
 print(result.text)
 print(result.changes)
 
-# Case-insensitive, whole-word or phrase replacements; longest match wins.
-custom = prepare_text("Tokyo मा travel", overrides={"Tokyo": "टोकियो", "travel": "ट्र्याभल"})
-
-from nepali_speech.tts import VITS
-VITS().synthesize(result.text, "outputs/demo.wav")
+custom = prepare_text(
+    "Music Festival मा travel",
+    overrides={"music festival": "सङ्गीत महोत्सव", "travel": "ट्र्याभल"},
+)
 ```
 
-`result` contains only `text` and `changes`. Each change contains `kind`, `before`,
-and `after`; the list describes transformations in execution order, not offsets.
-Resolution is override → acronym → likely Romanized Nepali via IndicXlit →
-English via g2p_en. Routing hints are a small heuristic, not a language detector.
-English rendering uses generic ARPAbet rules, not a growing word dictionary.
-AE maps to आ separately from EH (ए), so `travel` becomes `ट्राभल`; vowel
-glides and rhotic vowels are handled in context. Developer overrides take
-precedence for preferred pronunciations. Existing five legacy overrides remain
-for compatibility; the neutral corpus requires none.
-
-Spacing is TTS-first: postpositions remain separate (`टोक्यो मा`), and `।`
-becomes `.` without manually added audio silence.
+Overrides match whole words or phrases case-insensitively; the longest match
+wins. They take precedence over acronyms and automatic pronunciation.
+`changes` records each transformation's `kind`, `before`, and `after`.
 
 ## CLI
 
-Use single quotes in PowerShell to preserve `$40` literally.
+Single quotes preserve dollar amounts in PowerShell:
 
-```powershell
+```sh
 nepali-speech normalize 'Tokyo मा Oct 12 मा ticket $40 हुनेछ.' --changes
 nepali-speech speak 'Tokyo मा Oct 12 मा ticket $40 हुनेछ.' -o outputs/demo.wav
 ```
 
-## Demo and tests
+## Optional IndicXlit
 
-```powershell
-python -m pytest -q
-python examples/demo.py --speak
+Install `python -m pip install -e ".[indicxlit]"` for Romanized Nepali.
+The lazy `nepali_speech.transliterate.transliterate_word` interface is retained.
+Without a working backend, it raises `TransliterationUnavailable`; optional
+transliteration tests skip with a reason. Core features work without IndicXlit.
+Its older fairseq dependencies may not install on newer Python versions.
+
+## VITS
+
+Install `python -m pip install -e ".[tts]"` before using `speak` or:
+
+```python
+from nepali_speech.tts import VITS
+
+VITS().synthesize(result.text, "outputs/demo.wav")
 ```
 
-`examples/corpus.json` contains the seven exact requested texts. The demo records
-real output/errors in `outputs/normalization_report.json` and writes T7 audio to
-`outputs/t7_demo.wav` (22,050 Hz mono). T6 skips only when IndicXlit is
-unavailable. The demo exits nonzero if another case fails. Corpus tests and the
-demo exercise real English pronunciation; small unit tests cover phoneme rules
-and the optional adapter interface. No human listening review is claimed.
-Generated outputs, weights, environments, and caches are excluded from Git.
+Text preparation never loads VITS. First use downloads the required NLTK
+resources or VITS source and weights; cached inference runs locally on CPU.
+Caches default to `outputs/.cache`; set `NEPALI_SPEECH_CACHE` to change this.
+Generated audio, environments, and model caches are excluded from Git.
 
 ## Limitations
 
-- Optional IndicXlit (T6) is skipped when unavailable.
-- English phoneme-to-Devanagari rendering is approximate; homographs use the first
-  dictionary pronunciation. Foreign names may need caller overrides.
-- Dates support month + day 1–31, without year or calendar validation.
-- Numbers support standalone integers; decimals and grouped numbers raise errors.
-- Acronyms are uppercase Latin tokens; uppercase ordinary words also spell out.
-- VITS may omit unsupported symbols with a warning. No audio quality score or
-  human listening review is claimed.
+English phoneme rendering is approximate, and homographs use the first dictionary
+pronunciation. Supply overrides for preferred names or pronunciations. Romanized
+Nepali detection is heuristic. Dates support month/day without calendar validation;
+decimals and grouped numbers are unsupported. Uppercase Latin words spell out as
+acronyms. VITS may warn about unsupported characters and omit them.
 
 ## Roadmap
 
-Future work: optional IndicXlit packaging and native-speaker T6 review,
-improved English phoneme rendering, and more numeric formats.
+Improve pronunciation, simplify optional IndicXlit installation, and support more
+numeric formats.
 
-## Sources and license
-
-Package code: MIT, see LICENSE. Downloaded dependencies, model weights, and source
-retain their own licenses and are not included in the package license.
-
-- [Nepali VITS model](https://huggingface.co/Dragneel/nepali-vits-tts)
-- [Upstream VITS](https://github.com/jaywalnut310/vits)
-- [nepali-num2word](https://pypi.org/project/nepali-num2word/)
-- [AI4Bharat IndicXlit](https://github.com/AI4Bharat/IndicXlit)
-- [g2p_en](https://github.com/Kyubyong/g2p)
-
-Source is available on GitHub. No PyPI publication.
+MIT license for package code. Dependencies and downloaded
+[Nepali VITS weights](https://huggingface.co/Dragneel/nepali-vits-tts) retain their
+own licenses. VITS inference uses [upstream source](https://github.com/jaywalnut310/vits).

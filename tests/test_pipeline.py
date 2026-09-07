@@ -11,9 +11,19 @@ from nepali_speech.transliterate import TransliterationUnavailable
 
 CORPUS = json.loads((Path(__file__).parents[1] / "examples/corpus.json").read_text(encoding="utf-8"))
 
+@pytest.fixture(autouse=True)
+def offline_english(monkeypatch):
+    from nepali_speech import pronunciation
+    class Engine:
+        cmu = json.loads((Path(__file__).parent / "fixtures/english_phonemes.json").read_text(encoding="utf-8"))
+    pronunciation.english_pronunciation.cache_clear()
+    monkeypatch.setattr(pronunciation, "_g2p", lambda: Engine())
+    yield
+    pronunciation.english_pronunciation.cache_clear()
+
 @pytest.mark.parametrize("name", list(CORPUS))
 def test_corpus(name):
-    # Real pronunciation models; T6 skips only if the optional backend is absent.
+    # Generic rendering uses recorded phoneme fixtures; no model downloads.
     try:
         result = prepare_text(CORPUS[name])
     except TransliterationUnavailable as exc:
@@ -49,7 +59,7 @@ def test_custom_override_precedence():
 
 def test_override_boundaries(monkeypatch):
     monkeypatch.setattr(pipeline, "english_pronunciation", lambda word: "अन्य")
-    assert prepare_text("Tokyotown").text == "अन्य"
+    assert prepare_text("Tokyotown", overrides={"Tokyo": "टोकियो"}).text == "अन्य"
 
 
 def test_acronyms():
@@ -124,3 +134,27 @@ def test_transliteration_interface(monkeypatch):
     monkeypatch.setattr(transliterate, "_engine", lambda: Engine())
     assert transliterate.transliterate_word("pokhara") == "पोखरा"
     transliterate.transliterate_word.cache_clear()
+
+
+def test_phrase_override_longest_match():
+    result = prepare_text("MUSIC festival र Music", overrides={"music": "सङ्गीत", "Music Festival": "सङ्गीत महोत्सव"})
+    assert result.text == "सङ्गीत महोत्सव र सङ्गीत"
+    assert all(c["kind"] == "override" for c in result.changes)
+
+
+def test_override_precedes_acronym_and_transliteration(monkeypatch):
+    def unexpected(word):
+        pytest.fail("Caller override must bypass automatic pronunciation")
+    monkeypatch.setattr(pipeline, "transliterate_word", unexpected)
+    monkeypatch.setattr(pipeline, "english_pronunciation", unexpected)
+    assert prepare_text("BBC aaja hotel", overrides={"bbc": "समाचार", "aaja": "आज", "hotel": "होटेल"}).text == "समाचार आज होटेल"
+
+
+def test_no_builtin_word_overrides(monkeypatch):
+    calls = []
+    def pronounce(word):
+        calls.append(word)
+        return "शब्द"
+    monkeypatch.setattr(pipeline, "english_pronunciation", pronounce)
+    assert prepare_text("Texas Dallas Diaspora United Airlines USCIS").text == "शब्द शब्द शब्द शब्द शब्द यू एस सी आई एस"
+    assert calls == ["Texas", "Dallas", "Diaspora", "United", "Airlines"]
