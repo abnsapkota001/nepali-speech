@@ -30,14 +30,15 @@ After: `काठमाडौं मा नोभेम्बर पाँच �
 
 ## Install
 
-Requires Python 3.10+. Clone this repository, then install from its directory:
+Requires Python 3.10+.
+
+### Core package
 
 ```sh
 python -m venv .venv
 # Activate .venv using your shell.
 python -m pip install -e .
 nepali-speech setup-pronunciation
-```
 
 For development: `python -m pip install -e ".[dev]"`, then `python -m pytest`.
 Tests use phoneme fixtures and need no TTS models or pronunciation downloads.
